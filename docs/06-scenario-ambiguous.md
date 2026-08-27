@@ -94,7 +94,76 @@ Signed: Masud Siraj   Date: 2026-08-27
 ---
 
 ## 2. Implementation (D2–D4)
-_Pending answers in §1.7._
+
+Commit `5b31204`.
+
+### 2.1 Structure
+
+| Class | Role | Why it is shaped this way |
+|-------|------|---------------------------|
+| `RateLimiter` (interface) | `check(clientId, bucket) -> Decision` | The port. Swapping to Redis for multi-node (docs/06 §1.6) replaces one implementation and touches nothing else. |
+| `TokenBucket` | steady-refill bucket, driven by an injected `Instant` | Chosen over a fixed window because a fixed window permits a 2× burst across the boundary (Q8). Time is a parameter, so tests never sleep. |
+| `InMemoryRateLimiter` | per-`(client, bucket)` buckets in a Caffeine cache, max 100k, 10-min expiry | The bound is the point: an unbounded map keyed by client IP would make the limiter itself a memory-exhaustion vector (Q14). |
+| `RateLimitFilter` | `OncePerRequestFilter`, `@Order(1)` | Runs ahead of controller dispatch so a rejected request never reaches the database (Q3). |
+| `ShortenerProperties.RateLimit` | `enabled`, `createPerMinute`, `redirectPerMinute`, `maxTrackedClients` | Limits are configuration, not constants (Q9) — tunable during an incident without a rebuild. |
+
+### 2.2 The answered questions, in code
+
+| Decision | Where it lives |
+|----------|----------------|
+| Q5 — do not trust `X-Forwarded-For` | `RateLimitFilter` uses `request.getRemoteAddr()`; the header is never read |
+| Q12 — fail open | `catch (RuntimeException)` around the limiter call logs and calls `chain.doFilter` |
+| Q2 — actuator exempt | `shouldNotFilter` covers `/actuator`, `/v3/api-docs`, `/swagger-ui`, `/h2-console` |
+| Q10/Q11 — 429 semantics | `ProblemDetail` with `type=.../rate-limited` plus a `Retry-After` header in seconds |
+| Q15 — observability | `ratelimit.rejected` counter tagged by bucket; WARN log per rejection |
+
+---
 
 ## 3. Validation and production delta (D5)
-_Pending._
+
+### 3.1 Result
+
+```
+[INFO] Tests run: 97, Failures: 0, Errors: 0, Skipped: 0    -- surefire (unit)
+[INFO] Tests run: 22, Failures: 0, Errors: 0, Skipped: 0    -- failsafe (Testcontainers)
+[INFO] All coverage checks have been met.
+[INFO] BUILD SUCCESS
+```
+
+Acceptance criteria §1.4 map to tests as planned in §1.5: `TokenBucketTest` (AC 4), `InMemoryRateLimiterTest` (AC 3, 4), `RateLimitFilterTest` (AC 5, 6, 8, 9), `RateLimitIT` (AC 1, 5, 6, and AC 7 implicitly — see below).
+
+### 3.2 The trade-off, demonstrated rather than asserted
+
+Enabling the limiter globally immediately broke three unrelated integration tests:
+
+```
+[ERROR] UrlApiIT ... internalHostIs422           Expected status code <422> but was <429>.
+[ERROR] UrlApiIT ... metadataEndpointReturns...  Expected status code <201> but was <429>.
+[ERROR] UrlApiIT ... reservedAliasIs400          Expected status code <400> but was <429>.
+[ERROR] AliasConcurrencyIT ... [exactly one winner]
+```
+
+Every test client connects from `127.0.0.1`, so the whole suite shared one bucket and exhausted 10 creates per minute within seconds. This is precisely the shared-IP false positive accepted under **Q-B (a)** — surfaced here as a concrete failure rather than a paragraph of speculation.
+
+**Resolution:** the limiter is disabled by default for integration tests (`AbstractPostgresIT` sets `shortener.rate-limit.enabled=false`), and `RateLimitIT` opts back in. Production configuration is unchanged — `application.yml` ships with `enabled: true`.
+
+An engineer edit was needed to make that work: `@DynamicPropertySource` in the base class takes precedence over `@TestPropertySource` in a subclass, so the first attempt left the limiter off in `RateLimitIT` itself and the 429 assertion failed with a 201. The base class now reads a system property that `RateLimitIT` sets in a static initializer.
+
+`RateLimitIT` also lowers the limits to 3 and 5 via `@TestPropertySource`. That keeps the test fast **and** proves acceptance criterion 7 as a side effect: if limits were constants rather than configuration, the test could not have changed them.
+
+### 3.3 Operational consequence for evaluators
+
+The service ships with the limiter **on** at 10 creates/minute per IP. Running the README smoke commands repeatedly from one machine will produce a `429` on the 11th create within a minute. That is correct behaviour, not a defect. To exercise the API freely:
+
+```bash
+SHORTENER_RATE_LIMIT_ENABLED=false docker compose up
+```
+
+### 3.4 Limitations carried to `docs/08`
+- **Shared IP:** clients behind one NAT or proxy share a bucket (accepted, Q-B a).
+- **Reverse proxy blindness:** because `X-Forwarded-For` is untrusted (Q5), deploying behind a proxy collapses all clients into one bucket — the limiter effectively stops discriminating. The secure default was chosen over the useful-but-spoofable one; production needs trusted-proxy configuration.
+- **Single node:** buckets are per-process. Two instances behind a load balancer give each client 2× the intended budget.
+- **IPv6 /128 granularity:** a client with a /64 can rotate addresses to evade the limit (Q6).
+
+### 3.5 What this scenario demonstrates
+The nine-word requirement contained fifteen unstated decisions. None of them were technically difficult; the engineering was in surfacing them, proposing defensible defaults, getting an explicit answer, and then implementing exactly what was agreed — with the consequences of those answers documented and, in the Q-B case, demonstrated by a failing test suite.

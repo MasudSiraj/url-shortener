@@ -28,6 +28,14 @@ Legend — **Gen**: accepted as generated · **Edit**: engineer changed it · **
 | 20 | Generator refactor (C7) | 09 | **Edit** | AI asserted `00001C` for base62(100); correct value is `000001c`. Generator correct, test wrong — corrected. | Unit red → green |
 | 21 | Process: AI zip overwrote local fix | 09 | **Edit** | Refactor bundle carried an older `UrlServiceTest`, reverting the row-16 fix. Re-applied. Noted as a workflow risk of file-bundle delivery. | Unit red → green |
 
+| 22 | Ambiguity resolution (D1) | 10 | Gen | 15 questions across scope/identity/limits/breach/storage/observability; two flagged as engineer-only | Review |
+| 23 | Answers Q-A, Q-B, Q5, Q7, Q12 **H** | 10 | Gen | Engineer accepted all recommendations; signed 2026-08-27 | Sign-off |
+| 24 | Rate-limit implementation (D2–D4) **H** | 11 | Gen | `ratelimit` package, filter, config binding, 4 test classes | Compile |
+| 25 | Global limiter broke 3 unrelated ITs **H** | 11 | **Edit** | All IT clients share 127.0.0.1 → shared bucket → 429 storm. Disabled by default in `AbstractPostgresIT`; `RateLimitIT` opts in. Production config unchanged. Concrete proof of the Q-B trade-off. | IT red → green |
+| 26 | `@TestPropertySource` lost to `@DynamicPropertySource` | 11 | **Edit** | First fix left the limiter off inside `RateLimitIT` (429 test got 201). Base class now reads a system property the test sets. | IT red → green |
+| 27 | AI zip re-overwrote two fixed tests | 11 | **Edit** | Same failure mode as row 21 — bundle carried stale `UrlServiceTest` and `SequenceBase62GeneratorTest`. Re-applied both fixes. Recurring workflow risk of whole-file delivery. | Unit red → green |
+| 28 | Rate-limit suite final | 11 | Gen | 97 unit + 22 IT green; coverage gate met | `mvn verify` green |
+
 
 ## Sign-off notes (high-impact)
 
@@ -42,3 +50,5 @@ Legend — **Gen**: accepted as generated · **Edit**: engineer changed it · **
 - **C3 / redirect hot path** — Reviewed the publish-then-return sequence and the bounded executor's discard policy; confirmed `CallerRunsPolicy` is not used. Verified `AnalyticsIT` proves async persistence and that no raw IP is stored. Approved — Sam.
 - **C5 / defect reproduction** — Verified the test fails against `829b92d` before any fix, and that the failure is 500 (not duplicate rows), confirming the DB constraint holds and only the mapping was missing. Approved — Sam.
 - **C6 / alias fix** — Reviewed both levels: unique index in V1 (unchanged, verified) and the service-level translation to 409. Confirmed 49 of 50 racers now receive 409. Approved — Sam.
+- **D1 / rate-limit decisions** — Reviewed all 15 questions; accepted the recommended default for each, including the two flagged as product calls (limit redirects; accept shared-IP false positives). Approved — Sam, 2026-08-27.
+- **D3 / rate-limit filter** — Reviewed the hot-path impact: filter runs before controller dispatch, uses `getRemoteAddr()` only, fails open on limiter error, and exempts actuator. Verified the 429 body carries `Retry-After` and leaks no internal detail. Approved — Sam.
