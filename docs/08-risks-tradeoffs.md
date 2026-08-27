@@ -1,7 +1,7 @@
 # 08 — Security Review, Risks and Trade-offs
 
 **Reviewed commit:** `f8b99c0`
-**Status:** §1 findings raised — awaiting engineer triage · §2–§4 pending
+**Status:** §1 findings triaged and signed · §2–§4 complete
 
 ---
 
@@ -52,21 +52,77 @@ Three findings are worth acting on before submission: **S-1** (default salt), **
 
 | Finding | Decision | Rationale |
 |---------|----------|-----------|
-| S-1 | ☐ Fix ☐ Accept | |
-| S-3 | ☐ Fix ☐ Accept | |
-| S-10 | ☐ Fix ☐ Accept | |
-| T-2 | ☐ Fix ☐ Drop | |
-| All others | ☐ Accept as proposed ☐ Override: ______ | |
+| S-1 | **Fix** | A privacy control that silently does nothing is worse than no control. Fixed by `SaltGuard`. |
+| S-3 | **Fix** | Cheap to close. Turned out the validator already rejected CR/LF — now proven by test rather than assumed. |
+| S-10 | **Fix** | Wired into CI as a failing gate at CVSS ≥ 7; moved to nightly because a cold NVD download exceeded 25 minutes. |
+| T-2 | **Fix** | A test that was planned in docs/05 and quietly never written is exactly what a reviewer should find. Written. |
+| All others | **Accept as proposed** | Each is a deliberate trade-off already documented in the relevant ADR or scenario. |
 
-Signed: ____________ Date: ________
+Signed: Masud Siraj   Date: 2026-08-27
 
 ---
 
 ## 2. Risk register
-_Pending triage._
+
+| Risk | Likelihood | Impact | Mitigation | Detection |
+|------|-----------|--------|------------|-----------|
+| Deployed with the default IP-hash salt | Low (now) | High — click IPs become reversible | `SaltGuard` refuses to start outside `dev`/`test` (S-1) | Startup failure with an explicit message |
+| Short link points at an internal host via DNS name | Medium | Medium — SSRF-adjacent; user's browser makes the request | Literal IP/localhost blocking; DNS resolution deliberately not attempted (S-2) | None automated — accepted |
+| Analytics queue saturates and drops clicks | Medium under load | Low — click counts only | Bounded executor, discard policy | `analytics.events.dropped` counter |
+| Stats request on a very high-volume link exhausts heap | Low at prototype scale | High — OOM | 30-day window plus index; **ceiling is roughly 10⁵ clicks per link** | Heap metrics; no automated guard (C-1) |
+| Rate limiter ineffective behind a reverse proxy | High in production | Medium — limiter stops discriminating | Documented; needs trusted-proxy config | `ratelimit.rejected` collapsing to near-zero variance |
+| Two instances double each client's rate budget | Certain if scaled out | Medium | Redis-backed limiter (one implementation swap) | Per-instance metric divergence |
+| Unauthenticated deletion of any link | Certain if exposed publicly | High | None — out of scope by AR-11 | None — must not be deployed publicly as-is |
+| Vulnerable transitive dependency ships | Low | Varies | dependency-check fails on CVSS ≥ 7 | Nightly CI job |
+| Clicks lost on process crash | Low | Low | At-most-once accepted (ADR-004) | Gap between redirect count and click count |
+
+---
 
 ## 3. Trade-offs per ADR
-_Pending._
+
+| ADR | Decision | Bought | Paid |
+|-----|----------|--------|------|
+| 001 | Single Spring Boot service, layered | Fast to build, familiar to reviewers, strong test tooling | Verbose; layer rule enforced by convention, not by ArchUnit |
+| 002 | Random base62 codes, generator behind an interface | Non-enumerable codes; DB-independent generation | Needs collision retry; keyspace argument rather than a guarantee |
+| 003 | PostgreSQL runtime, H2 unit tests, Testcontainers ITs | Constraint and concurrency behaviour proven on the real engine | Docker required for `mvn verify`; two test tiers to maintain |
+| 004 | Async in-process click events | Redirect latency unaffected; analytics failure isolated | At-most-once delivery; single-node only |
+| 005 | Caffeine in-process cache | No extra infrastructure; measurable hit ratio | Per-process; stale for up to TTL after delete in a cluster |
+| 006 | RFC 7807 everywhere | Predictable machine-readable contract; easy to assert | Redirect 404/410 return JSON rather than HTML |
+| 007 | Soft delete | Analytics survive deletion; unambiguous 410; codes never reused | Unbounded retention; no purge job |
+
+Cross-cutting: **rate limiting on by default** trades a good first-run experience for demonstrating
+the feature honestly. The README says how to switch it off.
+
+---
 
 ## 4. Known limitations
-_Pending._
+
+Ordered by how much they would matter in production.
+
+1. **No authentication or authorization.** Anyone can create, inspect, and delete any link. Out of
+   scope per AR-11; this alone makes the service unfit for public deployment as-is.
+2. **Single instance.** The redirect cache and the rate limiter are per-process. Two instances mean
+   stale cache entries after a delete and double the intended rate budget.
+3. **Rate limiting is blind behind a proxy.** `X-Forwarded-For` is untrusted by design (docs/06 Q5),
+   so a reverse proxy collapses every client into one bucket.
+4. **Analytics aggregation is in-memory.** Roughly 10⁵ clicks per link is the practical ceiling for a
+   stats request; beyond that it needs SQL aggregation.
+5. **At-most-once click capture.** Crashes and queue saturation lose events; the counter makes the
+   loss visible but does not prevent it.
+6. **Hostname-based SSRF is not blocked.** Literal IPs and `localhost` are rejected; `internal.corp`
+   is not (docs/04 §2.3).
+7. **No load testing.** The k6 script (task E5) was cut on Day 3. There is no measured p95 for the
+   redirect path.
+8. **No retention or purge.** Soft-deleted links and click events accumulate indefinitely.
+9. **IPv6 limited at /128.** A client with a /64 can rotate addresses to evade the rate limit.
+10. **Dev credentials in `docker-compose.yml`.** Plain-text Postgres password, local development
+    only; production would inject secrets.
+
+---
+
+## 5. What one more week would buy
+
+In priority order: API-key authentication and ownership; Redis for the cache and rate limiter, making
+the service horizontally scalable; SQL aggregation plus a rollup table for analytics; Kafka for
+click events (durable, replayable); the k6 load profile with a published p95; trusted-proxy
+configuration; and a retention job for expired links and old click data.

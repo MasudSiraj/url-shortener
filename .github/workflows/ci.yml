@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  schedule:
+    - cron: '0 6 * * *'   # nightly dependency scan
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: temurin
@@ -35,14 +38,17 @@ jobs:
             target/failsafe-reports/
             target/site/jacoco/
 
+  # Engineer decision (docs/07): the NVD download makes this job slow on a cold cache, so it runs
+  # nightly and on demand rather than on every push. It still fails the build on CVSS >= 7.
   dependency-check:
     name: OWASP dependency-check (fails on CVSS >= 7)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: temurin
