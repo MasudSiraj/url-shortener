@@ -58,9 +58,14 @@ public class UrlService {
   private ShortUrlView createWithAlias(CreateShortUrlCommand cmd, Instant now) {
     String alias = cmd.customAlias().trim();
     aliasPolicy.validateAlias(alias);
-    ShortUrl saved =
-        repository.saveAndFlush(new ShortUrl(alias, cmd.longUrl(), true, now, cmd.expiresAt()));
-    return ShortUrlView.from(saved, props.baseUrl());
+    try {
+      ShortUrl saved =
+          repository.saveAndFlush(new ShortUrl(alias, cmd.longUrl(), true, now, cmd.expiresAt()));
+      return ShortUrlView.from(saved, props.baseUrl());
+    } catch (DataIntegrityViolationException e) {
+      // Two requests raced on the same alias; the unique index chose the winner. Loser gets 409.
+      throw new AliasConflictException(alias);
+    }
   }
 
   private ShortUrlView createWithGeneratedCode(CreateShortUrlCommand cmd, Instant now) {
