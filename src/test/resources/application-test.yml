@@ -8,3 +8,5 @@ spring:
 shortener:
   analytics:
     ip-hash-salt: test-salt
+  rate-limit:
+    enabled: false

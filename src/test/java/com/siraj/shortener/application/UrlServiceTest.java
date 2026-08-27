@@ -42,7 +42,8 @@ public class UrlServiceTest {
             7,
             3,
             new ShortenerProperties.Cache(100, Duration.ofMinutes(1)),
-            new ShortenerProperties.Analytics("salt"));
+            new ShortenerProperties.Analytics("salt"),
+            new ShortenerProperties.RateLimit(false, 10, 100, 1000));
     service =
         new UrlService(
             repository,

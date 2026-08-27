@@ -45,3 +45,8 @@ shortener:
     ttl: 10m
   analytics:
     ip-hash-salt: ${SHORTENER_IP_SALT:dev-only-salt-change-me}
+  rate-limit:
+    enabled: true
+    create-per-minute: 10      # POST /api/v1/urls        (docs/06 Q7)
+    redirect-per-minute: 100   # GET /{code} and other reads
+    max-tracked-clients: 100000

@@ -5,7 +5,7 @@
 Nine words. It names no endpoint, no subject, no limit, no window, no behaviour on breach, and no storage. Implementing it directly would mean inventing five product decisions and presenting them as engineering. This document separates what was asked from what had to be decided.
 
 **Scope:** tasks D1–D5 in `docs/03-task-breakdown.md`
-**Status:** §1 questions raised — awaiting engineer (product owner) answers · §2–§3 pending
+**Status:** §1 answered and signed · §2 implemented (D2–D4) · §3 complete
 
 ---
 
@@ -83,13 +83,13 @@ Time is driven by the injected `Clock` (`MutableClock` in tests) — no `Thread.
 
 | # | Question | Answer |
 |---|----------|--------|
-| Q-A | Limit the redirect path? | ☐ (a) Yes, 100/min ☐ (b) No |
-| Q-B | Shared-IP false positives | ☐ (a) Accept + document ☐ (b) Allow-list CIDRs |
-| Q5 | Trust `X-Forwarded-For`? | ☐ No (recommended) ☐ Yes |
-| Q12 | Limiter internal error | ☐ Fail open (recommended) ☐ Fail closed |
-| Q7 | Limits | ☐ 10 / 100 per min ☐ Other: ______ |
+| Q-A | Limit the redirect path? | ☑ (a) Yes, 100/min |
+| Q-B | Shared-IP false positives | ☑ (a) Accept + document |
+| Q5 | Trust `X-Forwarded-For`? | ☑ No — `getRemoteAddr()` only |
+| Q12 | Limiter internal error | ☑ Fail open |
+| Q7 | Limits | ☑ 10 / 100 per minute |
 
-Signed: ____________ Date: ________
+Signed: Masud Siraj   Date: 2026-08-27
 
 ---
 
