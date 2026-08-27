@@ -1,8 +1,10 @@
 package com.siraj.shortener;
 
+import com.siraj.shortener.support.TestClockConfig;
 import io.restassured.RestAssured;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.testng.AbstractTestNGSpringContextTests;
@@ -15,6 +17,7 @@ import org.testng.annotations.BeforeClass;
  * H2.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(TestClockConfig.class)
 public abstract class AbstractPostgresIT extends AbstractTestNGSpringContextTests {
 
   @SuppressWarnings("resource")
