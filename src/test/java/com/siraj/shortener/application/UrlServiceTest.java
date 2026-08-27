@@ -80,6 +80,17 @@ public class UrlServiceTest {
   }
 
   @Test
+  public void customAliasCollisionIsMappedToConflict() {
+    when(repository.saveAndFlush(any(ShortUrl.class)))
+        .thenThrow(new DataIntegrityViolationException("duplicate key ux_short_url_code"));
+
+    assertThatThrownBy(
+            () -> service.create(new CreateShortUrlCommand("https://example.com", "taken01", null)))
+        .isInstanceOf(AliasConflictException.class);
+    verify(generator, never()).next();
+  }
+
+  @Test
   public void retriesOnCollisionThenSucceeds() {
     when(generator.next()).thenReturn("dup0001", "dup0002", "fresh01");
     when(repository.saveAndFlush(any(ShortUrl.class)))
