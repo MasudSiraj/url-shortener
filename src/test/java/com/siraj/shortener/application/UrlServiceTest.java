@@ -126,12 +126,17 @@ public class UrlServiceTest {
   }
 
   @Test
-  public void resolvesLiveLink() {
-    when(repository.findByCode("live001"))
-        .thenReturn(
-            Optional.of(new ShortUrl("live001", "https://example.com/t", false, NOW, null)));
+  public void resolvesLiveLink() throws Exception {
+    ShortUrl live = new ShortUrl("live001", "https://example.com/t", false, NOW, null);
+    var id = ShortUrl.class.getDeclaredField("id");
+    id.setAccessible(true);
+    id.set(live, 99L);
+    when(repository.findByCode("live001")).thenReturn(Optional.of(live));
 
-    assertThat(service.resolve("live001")).isEqualTo("https://example.com/t");
+    ResolvedTarget target = service.resolve("live001");
+
+    assertThat(target.longUrl()).isEqualTo("https://example.com/t");
+    assertThat(target.shortUrlId()).isEqualTo(99L);
   }
 
   @Test

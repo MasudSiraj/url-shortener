@@ -2,7 +2,7 @@
 
 **Baseline ("existing code"):** tag `v0.1-greenfield` (`7c5ebb9`)
 **Scope:** tasks C1–C8 in `docs/03-task-breakdown.md`
-**Status:** §1 complete (analysis, awaiting sign-off) · §2–§4 pending
+**Status:** §1 signed off · §2 implemented (C2–C4) · §3–§4 pending
 
 ---
 
@@ -143,14 +143,14 @@ No change to existing endpoints or response shapes.
 
 | # | Decision | AI recommendation | Engineer |
 |---|----------|-------------------|----------|
-| D-1 | Capture strategy | B — async in-process event | ☐ Accept ☐ Override: ____ |
-| D-2 | `resolve` returns `ResolvedTarget(id, longUrl)` | Option (a) | ☐ Accept ☐ Override: ____ |
-| D-3 | Executor 2/4/1000, `DiscardPolicy`, dropped-events counter | As ADR-004 | ☐ Accept ☐ Override: ____ |
-| D-4 | Store salted SHA-256 of IP only | Yes | ☐ Accept ☐ Override: ____ |
-| D-5 | Stats remain available for deleted/expired links | Yes (ADR-007) | ☐ Accept ☐ Override: ____ |
-| D-6 | `topReferrers` limit | 5 | ☐ Accept ☐ Override: ____ |
+| D-1 | Capture strategy | B — async in-process event | ☑ Accept |
+| D-2 | `resolve` returns `ResolvedTarget(id, longUrl)` | Option (a) | ☑ Accept |
+| D-3 | Executor 2/4/1000, `DiscardPolicy`, dropped-events counter | As ADR-004 | ☑ Accept |
+| D-4 | Store salted SHA-256 of IP only | Yes | ☑ Accept |
+| D-5 | Stats remain available for deleted/expired links | Yes (ADR-007) | ☑ Accept |
+| D-6 | `topReferrers` limit | 5 | ☑ Accept |
 
-Signed: ____________ Date: ________
+Signed: Masud Siraj   Date: 2026-08-27
 
 ---
 

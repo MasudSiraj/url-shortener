@@ -78,14 +78,14 @@ public class UrlService {
     throw new CodeGenerationExhaustedException(attempts);
   }
 
-  /** Hot path. Returns the target URL or throws 404/410 semantics. */
+  /** Hot path. Returns the target (and link id for analytics) or throws 404/410 semantics. */
   @Transactional(readOnly = true)
-  public String resolve(String code) {
+  public ResolvedTarget resolve(String code) {
     ShortUrl url = find(code);
     if (url.isGone(clock.instant())) {
       throw new ShortUrlGoneException(code);
     }
-    return url.getLongUrl();
+    return new ResolvedTarget(url.getId(), url.getLongUrl());
   }
 
   @Transactional(readOnly = true)
