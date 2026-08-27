@@ -1,0 +1,10 @@
+# Unit/slice tests: H2 in PostgreSQL mode. Integration tests (*IT) override the datasource via Testcontainers.
+spring:
+  datasource:
+    url: jdbc:h2:mem:test;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+shortener:
+  analytics:
+    ip-hash-salt: test-salt
