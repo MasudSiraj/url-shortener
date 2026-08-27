@@ -5,7 +5,9 @@ import static org.hamcrest.Matchers.equalTo;
 
 import org.testng.annotations.Test;
 
-/** Integration smoke: service boots against real Postgres, V1 applies, health reports UP (A3/A4). */
+/**
+ * Integration smoke: service boots against real Postgres, V1 applies, health reports UP (A3/A4).
+ */
 public class HealthIT extends AbstractPostgresIT {
 
   @Test
