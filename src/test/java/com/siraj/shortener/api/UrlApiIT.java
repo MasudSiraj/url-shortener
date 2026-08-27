@@ -13,10 +13,12 @@ import io.restassured.http.ContentType;
 import java.time.Duration;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.TestPropertySource;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 /** End-to-end behavior of the greenfield APIs on real PostgreSQL (task B7). */
+@TestPropertySource(properties = "shortener.rate-limit.enabled=false")
 public class UrlApiIT extends AbstractPostgresIT {
 
   @Autowired private MutableClock clock;

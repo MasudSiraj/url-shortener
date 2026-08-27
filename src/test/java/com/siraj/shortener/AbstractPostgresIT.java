@@ -40,10 +40,6 @@ public abstract class AbstractPostgresIT extends AbstractTestNGSpringContextTest
     registry.add("spring.datasource.password", POSTGRES::getPassword);
     registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
     registry.add("shortener.analytics.ip-hash-salt", () -> "it-salt");
-    // Rate limiting is disabled for ITs by default: every test client shares 127.0.0.1, so the
-    // per-IP limiter would throttle unrelated tests. RateLimitIT re-enables it via its own
-    // ContextConfiguration initializer.
-    registry.add("shortener.rate-limit.enabled", () -> System.getProperty("it.ratelimit", "false"));
   }
 
   @BeforeClass

@@ -16,10 +16,12 @@ import java.util.List;
 import java.util.Map;
 import org.awaitility.Awaitility;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.TestPropertySource;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 /** Brownfield task C3/C4: analytics on real PostgreSQL. */
+@TestPropertySource(properties = "shortener.rate-limit.enabled=false")
 public class AnalyticsIT extends AbstractPostgresIT {
 
   @Autowired private MutableClock clock;

@@ -9,7 +9,6 @@ import com.siraj.shortener.AbstractPostgresIT;
 import io.restassured.http.ContentType;
 import java.util.Map;
 import org.springframework.test.context.TestPropertySource;
-import org.testng.annotations.AfterClass;
 import org.testng.annotations.Test;
 
 /**
@@ -23,17 +22,6 @@ import org.testng.annotations.Test;
       "shortener.rate-limit.redirect-per-minute=5"
     })
 public class RateLimitIT extends AbstractPostgresIT {
-
-  static {
-    // The base class defaults the limiter off for ITs; this class is the one that needs it on.
-    // Set before the Spring context is created for this test class.
-    System.setProperty("it.ratelimit", "true");
-  }
-
-  @AfterClass(alwaysRun = true)
-  public void restoreDefault() {
-    System.clearProperty("it.ratelimit");
-  }
 
   @Test
   public void createBeyondLimitReturns429WithRetryAfterAndProblemJson() {

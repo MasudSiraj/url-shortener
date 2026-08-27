@@ -14,6 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import org.springframework.test.context.TestPropertySource;
 import org.testng.annotations.Test;
 
 /**
@@ -21,6 +22,7 @@ import org.testng.annotations.Test;
  * Expected contract: exactly one 201, every other request 409 Conflict. Anything else — in
  * particular a 500 — is the defect.
  */
+@TestPropertySource(properties = "shortener.rate-limit.enabled=false")
 public class AliasConcurrencyIT extends AbstractPostgresIT {
 
   private static final int THREADS = 50;
